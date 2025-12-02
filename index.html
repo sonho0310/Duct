@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tính Toán Kích Thước Ống Gió</title>
+    <!-- Sử dụng Tailwind CSS cho giao diện đẹp nhanh chóng -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome cho icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f0f9ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .input-group {
+            transition: all 0.3s ease;
+        }
+        /* Hiệu ứng focus nhẹ nhàng */
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        /* Tùy chỉnh thanh cuộn cho số */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-blue-600 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold uppercase tracking-wider"><i class="fa-solid fa-wind mr-2"></i>Tính Toán Ống Gió</h1>
+            <p class="text-blue-100 text-sm mt-1">Tự động tính toán & quy đổi kích thước</p>
+        </div>
+
+        <div class="p-6 space-y-6">
+            
+            <!-- Phần 1: Chọn phương pháp nhập liệu -->
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <label class="block text-gray-700 font-semibold mb-3">Dữ liệu đầu vào:</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="inputMode" value="flow" checked onclick="toggleMode('flow')" class="w-5 h-5 text-blue-600 focus:ring-blue-500">
+                        <span class="text-gray-800">Nhập Lưu Lượng (Q)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="inputMode" value="size" onclick="toggleMode('size')" class="w-5 h-5 text-blue-600 focus:ring-blue-500">
+                        <span class="text-gray-800">Ước tính từ Ống Cũ</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Phần 2: Inputs -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Cột Trái: Thông số đầu vào -->
+                <div class="space-y-4">
+                    
+                    <!-- Mode: Nhập Lưu Lượng (Đã chia đôi) -->
+                    <div id="flowInput" class="input-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lưu lượng gió</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <!-- Ô nhập l/s -->
+                            <div class="relative">
+                                <input type="number" id="airflow_ls" oninput="syncFlow('ls')" class="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg transition text-center font-semibold text-blue-800" placeholder="l/s">
+                                <span class="absolute right-2 top-2 text-gray-400 text-xs font-bold">L/s</span>
+                            </div>
+                            <!-- Ô nhập m3/h -->
+                            <div class="relative">
+                                <input type="number" id="airflow" oninput="syncFlow('m3h')" class="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg transition text-center font-semibold text-blue-800" placeholder="m³/h">
+                                <span class="absolute right-2 top-2 text-gray-400 text-xs font-bold">m³/h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mode: Nhập Size Cũ -->
+                    <div id="sizeInput" class="input-group hidden space-y-3">
+                        <p class="text-xs text-orange-600 italic"><i class="fa-solid fa-circle-info"></i> Nhập size ống hiện tại để tính tương đương.</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500">Rộng cũ (W)</label>
+                                <input type="number" id="oldW" oninput="calculate()" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="mm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500">Cao cũ (H)</label>
+                                <input type="number" id="oldH" oninput="calculate()" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="mm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vận tốc gió (Dùng chung) -->
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Vận tốc gió (m/s) 
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" id="velocityRange" min="1" max="15" step="0.5" value="6" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="syncVelocity(this.value)">
+                            <input type="number" id="velocityInput" value="6" class="w-16 p-1 text-center border border-gray-300 rounded-lg font-bold text-blue-700 text-sm" oninput="syncVelocity(this.value)">
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-400 mt-1">
+                            <span>Êm (4-5)</span>
+                            <span>Chuẩn (6-8)</span>
+                            <span>Ồn (>10)</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Cột Phải: Kết quả (Hiển thị luôn) -->
+                <div class="space-y-4">
+                    <div id="summary" class="text-xs text-gray-500 text-right h-4">
+                        <!-- Placeholder cho text trạng thái -->
+                    </div>
+
+                    <!-- Kết quả Ống Vuông (Đưa lên đầu - Ưu Tiên) -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm ring-1 ring-blue-100">
+                        <div class="flex items-center gap-3 mb-3 border-b border-blue-200 pb-2">
+                            <!-- Icon Ống Vuông MỚI (Thin SVG) -->
+                            <div class="w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="text-sm text-blue-800 font-bold uppercase">Kích thước Ống Vuông</div>
+                                <div class="text-xs text-blue-600">Kết quả đề xuất</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Công cụ chọn cạnh -->
+                        <div class="flex items-end justify-between gap-3 bg-white p-3 rounded-lg border border-blue-100">
+                            <div class="flex-1">
+                                <label class="block text-[10px] text-gray-500 font-bold uppercase mb-1">Cố định Chiều Cao (H)</label>
+                                <div class="relative group">
+                                    <input type="number" id="fixedH" value="250" step="50" class="w-full p-2 pl-3 pr-8 text-lg font-semibold text-gray-700 border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" oninput="recalcRect()">
+                                    <span class="absolute right-2 top-2.5 text-xs text-gray-400 font-normal">mm</span>
+                                </div>
+                            </div>
+                            
+                            <div class="text-blue-400 mb-3"><i class="fa-solid fa-arrow-right-long"></i></div>
+                            
+                            <div class="flex-1 text-right">
+                                <label class="block text-[10px] text-gray-500 font-bold uppercase mb-1">Chiều Rộng (W) Cần:</label>
+                                <div class="text-3xl font-bold text-blue-700 tracking-tight" id="resRectW">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kết quả Ống Tròn (Xuống dưới - Tham khảo) -->
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                <i class="fa-regular fa-circle text-gray-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-600 font-semibold uppercase">Ống Tròn (Tham khảo)</div>
+                            </div>
+                        </div>
+                        <div class="text-lg font-bold text-gray-600" id="resRound">-</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFlow = 0; // m3/h
+        let currentArea = 0; // m2 needed
+
+        // Đồng bộ thanh trượt và ô nhập vận tốc
+        function syncVelocity(val) {
+            document.getElementById('velocityRange').value = val;
+            document.getElementById('velocityInput').value = val;
+            calculate(); // Tính lại ngay khi kéo thanh trượt
+        }
+
+        // Đồng bộ 2 ô nhập lưu lượng (l/s và m3/h)
+        function syncFlow(source) {
+            const lsInput = document.getElementById('airflow_ls');
+            const m3hInput = document.getElementById('airflow');
+
+            if (source === 'ls') {
+                const ls = parseFloat(lsInput.value);
+                if (!isNaN(ls)) {
+                    // 1 l/s = 3.6 m3/h
+                    m3hInput.value = Math.round(ls * 3.6);
+                } else {
+                    m3hInput.value = '';
+                }
+            } else {
+                const m3h = parseFloat(m3hInput.value);
+                if (!isNaN(m3h)) {
+                    // 1 m3/h = 1/3.6 l/s
+                    lsInput.value = Math.round(m3h / 3.6);
+                } else {
+                    lsInput.value = '';
+                }
+            }
+            calculate();
+        }
+
+        // Chuyển đổi chế độ nhập liệu
+        function toggleMode(mode) {
+            const flowInput = document.getElementById('flowInput');
+            const sizeInput = document.getElementById('sizeInput');
+            
+            if (mode === 'flow') {
+                flowInput.classList.remove('hidden');
+                sizeInput.classList.add('hidden');
+                // Focus vào ô m3/h
+                document.getElementById('airflow').focus();
+            } else {
+                flowInput.classList.add('hidden');
+                sizeInput.classList.remove('hidden');
+                document.getElementById('oldW').focus();
+            }
+            calculate(); // Tính lại theo mode mới
+        }
+
+        // Hàm tính toán chính
+        function calculate() {
+            const velocity = parseFloat(document.getElementById('velocityInput').value) || 0;
+            const mode = document.querySelector('input[name="inputMode"]:checked').value;
+            let isValid = false;
+
+            // Reset kết quả về mặc định nếu input không hợp lệ
+            const resetResults = () => {
+                document.getElementById('resRound').innerText = "-";
+                document.getElementById('resRectW').innerText = "-";
+                document.getElementById('summary').innerHTML = "";
+                currentArea = 0;
+            };
+
+            if (velocity <= 0) {
+                resetResults();
+                return;
+            }
+
+            // BƯỚC 1: XÁC ĐỊNH LƯU LƯỢNG (Q)
+            if (mode === 'flow') {
+                // Lấy giá trị từ ô m3/h (vì đã được đồng bộ từ ô l/s nếu nhập l/s)
+                const inputQ = parseFloat(document.getElementById('airflow').value);
+                if (inputQ > 0) {
+                    currentFlow = inputQ;
+                    isValid = true;
+                }
+            } else {
+                const w = parseFloat(document.getElementById('oldW').value);
+                const h = parseFloat(document.getElementById('oldH').value);
+                if (w > 0 && h > 0) {
+                    // Diện tích cũ (m2)
+                    const areaOld = (w / 1000) * (h / 1000);
+                    // Q = v * A * 3600
+                    currentFlow = areaOld * velocity * 3600;
+                    isValid = true;
+                }
+            }
+
+            if (!isValid) {
+                resetResults();
+                return;
+            }
+
+            // Hiển thị lưu lượng đang tính
+            document.getElementById('summary').innerHTML = 
+                `Lưu lượng tính toán: <span class="font-bold text-gray-800">${Math.round(currentFlow).toLocaleString('vi-VN')}</span> m³/h`;
+
+            // BƯỚC 2: TÍNH DIỆN TÍCH TIẾT DIỆN CẦN THIẾT (A)
+            // A (m2) = Q (m3/h) / (3600 * v)
+            currentArea = currentFlow / (3600 * velocity);
+
+            // BƯỚC 3: TÍNH ỐNG TRÒN
+            // D = 2 * sqrt(A / PI) * 1000 (đổi ra mm)
+            const diameter = 2 * Math.sqrt(currentArea / Math.PI) * 1000;
+            document.getElementById('resRound').innerText = `${Math.round(diameter)} mm`;
+
+            // BƯỚC 4: TÍNH ỐNG VUÔNG (Gọi hàm phụ)
+            recalcRect();
+        }
+
+        // Hàm tính lại chiều rộng ống vuông khi thay đổi chiều cao
+        function recalcRect() {
+            if (currentArea <= 0) {
+                document.getElementById('resRectW').innerText = "-";
+                return;
+            }
+
+            const fixedH_mm = parseFloat(document.getElementById('fixedH').value);
+            if (!fixedH_mm || fixedH_mm <= 0) {
+                 document.getElementById('resRectW').innerText = "?";
+                 return;
+            }
+
+            const fixedH_m = fixedH_mm / 1000;
+            // W = A / H
+            const width_m = currentArea / fixedH_m;
+            // Tính ra mm và làm tròn đến số chia hết cho 5 gần nhất (để thi công dễ hơn)
+            const rawWidthMm = width_m * 1000;
+            const width_mm = Math.round(rawWidthMm / 5) * 5;
+
+            document.getElementById('resRectW').innerText = `${width_mm} mm`;
+        }
+    </script>
+</body>
+</html>
