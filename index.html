@@ -113,8 +113,11 @@
 
                 <!-- Cột Phải: Kết quả (Hiển thị luôn) -->
                 <div class="space-y-4">
-                    <div id="summary" class="text-xs text-gray-500 text-right h-4">
+                    <div id="summary" class="flex justify-between items-end text-xs text-gray-500 h-4">
+                        <!-- Hiển thị Pa/m ước tính -->
+                        <span id="pressureLoss" class="text-orange-600 font-semibold hidden"></span>
                         <!-- Placeholder cho text trạng thái -->
+                        <span id="summaryText" class="text-right ml-auto"></span>
                     </div>
 
                     <!-- Kết quả Ống Vuông (Đưa lên đầu - Ưu Tiên) -->
@@ -233,7 +236,8 @@
             const resetResults = () => {
                 document.getElementById('resRound').innerText = "-";
                 document.getElementById('resRectW').innerText = "-";
-                document.getElementById('summary').innerHTML = "";
+                document.getElementById('summaryText').innerHTML = "";
+                document.getElementById('pressureLoss').classList.add('hidden');
                 currentArea = 0;
             };
 
@@ -268,7 +272,7 @@
             }
 
             // Hiển thị lưu lượng đang tính
-            document.getElementById('summary').innerHTML = 
+            document.getElementById('summaryText').innerHTML = 
                 `Lưu lượng tính toán: <span class="font-bold text-gray-800">${Math.round(currentFlow).toLocaleString('vi-VN')}</span> m³/h`;
 
             // BƯỚC 2: TÍNH DIỆN TÍCH TIẾT DIỆN CẦN THIẾT (A)
@@ -280,8 +284,45 @@
             const diameter = 2 * Math.sqrt(currentArea / Math.PI) * 1000;
             document.getElementById('resRound').innerText = `${Math.round(diameter)} mm`;
 
+            // BƯỚC 3.5: TÍNH TỔN THẤT ÁP SUẤT (Estimated Friction Loss)
+            // Sử dụng công thức gần đúng cho ống tôn tráng kẽm (Galvanized Steel)
+            const friction = calculateFriction(diameter, velocity);
+            const lossEl = document.getElementById('pressureLoss');
+            lossEl.classList.remove('hidden');
+            lossEl.innerHTML = `<i class="fa-solid fa-gauge-high mr-1"></i>Tổn thất: ${friction.toFixed(2)} Pa/m`;
+
+
             // BƯỚC 4: TÍNH ỐNG VUÔNG (Gọi hàm phụ)
             recalcRect();
+        }
+
+        // Hàm tính tổn thất ma sát (Pa/m) dựa trên Colebrook-White equation logic (simplified iteration)
+        function calculateFriction(d_mm, v) {
+            if (!d_mm || !v) return 0;
+            
+            // Constants for Air (approx 20°C, 1 atm)
+            const rho = 1.204; // Density kg/m3
+            const nu = 1.51e-5; // Kinematic viscosity m2/s
+            const epsilon = 0.15e-3; // Roughness for Galvanized Steel (m)
+            const d_m = d_mm / 1000; // Diameter in m
+
+            // Reynolds number
+            const Re = (v * d_m) / nu;
+            
+            // Iterative solution for Darcy friction factor (f) using Colebrook equation
+            // 1/sqrt(f) = -2 * log10((epsilon / (3.7 * D)) + (2.51 / (Re * sqrt(f))))
+            
+            let f = 0.02; // Initial guess
+            for (let i = 0; i < 5; i++) { // 5 iterations is usually enough
+                const term1 = epsilon / (3.7 * d_m);
+                const term2 = 2.51 / (Re * Math.sqrt(f));
+                const next_f = 1 / Math.pow(-2 * Math.log10(term1 + term2), 2);
+                f = next_f;
+            }
+
+            // Darcy-Weisbach equation: Delta_P/L = f * (rho * v^2) / (2 * D)
+            const dP_L = (f * rho * Math.pow(v, 2)) / (2 * d_m);
+            return dP_L;
         }
 
         // Hàm tính lại chiều rộng ống vuông khi thay đổi chiều cao
@@ -300,9 +341,9 @@
             const fixedH_m = fixedH_mm / 1000;
             // W = A / H
             const width_m = currentArea / fixedH_m;
-            // Tính ra mm và làm tròn đến số chia hết cho 5 gần nhất (để thi công dễ hơn)
+            // Tính ra mm và làm tròn đến số chia hết cho 50 gần nhất
             const rawWidthMm = width_m * 1000;
-            const width_mm = Math.round(rawWidthMm / 5) * 5;
+            const width_mm = Math.round(rawWidthMm / 50) * 50;
 
             document.getElementById('resRectW').innerText = `${width_mm} mm`;
         }
