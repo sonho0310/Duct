@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duct Calculator</title>
+    <title>Tính Toán Kích Thước Ống Gió</title>
     <!-- Sử dụng Tailwind CSS cho giao diện đẹp nhanh chóng -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome cho icon -->
@@ -140,7 +140,7 @@
                             <div class="flex-1">
                                 <label class="block text-[10px] text-gray-500 font-bold uppercase mb-1">Cố định Chiều Cao (H)</label>
                                 <div class="relative group">
-                                    <input type="number" id="fixedH" value="250" step="50" class="w-full p-2 pl-3 pr-8 text-lg font-semibold text-gray-700 border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" oninput="recalcRect()">
+                                    <input type="number" id="fixedH" placeholder="Nhập" class="w-full p-2 pl-3 pr-8 text-lg font-semibold text-gray-700 border border-gray-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" oninput="recalcRect()">
                                     <span class="absolute right-2 top-2.5 text-xs text-gray-400 font-normal">mm</span>
                                 </div>
                             </div>
@@ -334,7 +334,8 @@
 
             const fixedH_mm = parseFloat(document.getElementById('fixedH').value);
             if (!fixedH_mm || fixedH_mm <= 0) {
-                 document.getElementById('resRectW').innerText = "?";
+                 // Nếu không nhập chiều cao thì hiển thị dấu ...
+                 document.getElementById('resRectW').innerText = "...";
                  return;
             }
 
@@ -350,4 +351,3 @@
     </script>
 </body>
 </html>
-
